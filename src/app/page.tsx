@@ -208,11 +208,10 @@ export default function LandingPage() {
         >
           <span className="text-white">Find your engineer</span>
           <br />
-          <span className="gradient-text">flatmate in</span>{" "}
-          <span className="text-white">
-            <span className="gradient-text-green">{typingWord}</span>
-            <span className="animate-blink text-neon-green ml-0.5">|</span>
-          </span>
+          <span className="gradient-text">flatmate in</span>
+          <br />
+          <span className="gradient-text-green">{typingWord}</span>
+          <span className="animate-blink text-neon-green ml-0.5">|</span>
         </motion.h1>
 
         <motion.p
