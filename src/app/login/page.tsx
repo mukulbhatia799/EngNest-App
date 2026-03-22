@@ -3,10 +3,13 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { Zap, Code2, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/providers/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
+import { getUserProfile } from "@/lib/firestore";
+import { auth, googleProvider } from "@/lib/firebase";
 import Link from "next/link";
 
 const FEATURES = [
@@ -15,54 +18,59 @@ const FEATURES = [
   { icon: Users, text: "Mutual match → WhatsApp link", color: "text-neon-cyan" },
 ];
 
-type Mode = "signin" | "signup" | null;
-
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading, signingIn, error, signInWithGoogle, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuthContext();
   const { profile, loading: profileLoading } = useProfile();
-  const [mode, setMode] = useState<Mode>(null);
+  const [busy, setBusy] = useState<"signin" | "signup" | null>(null);
   const [notice, setNotice] = useState<{ text: string; type: "error" | "info" } | null>(null);
 
+  // Auto-redirect already-logged-in users
   useEffect(() => {
-    if (authLoading || profileLoading || !user) return;
-
-    // Already-logged-in session with no button clicked → auto-route
-    if (mode === null) {
-      router.push(profile ? "/feed" : "/onboarding");
-      return;
-    }
-
-    if (mode === "signin") {
-      if (profile) {
-        router.push("/feed");
-      } else {
-        setNotice({ text: "No account found. Please sign up first.", type: "error" });
-        signOut();
-        setMode(null);
-      }
-    } else {
-      // signup
-      if (!profile) {
-        router.push("/onboarding");
-      } else {
-        setNotice({ text: "Account already exists. Redirecting to your feed…", type: "info" });
-        setTimeout(() => router.push("/feed"), 1500);
-        setMode(null);
-      }
-    }
-  }, [user, profile, authLoading, profileLoading, mode, router, signOut]);
+    if (authLoading || profileLoading || !user || busy) return;
+    router.push(profile ? "/feed" : "/onboarding");
+  }, [user, profile, authLoading, profileLoading, busy, router]);
 
   async function handleSignIn() {
     setNotice(null);
-    setMode("signin");
-    await signInWithGoogle();
+    setBusy("signin");
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const existing = await getUserProfile(result.user.uid);
+      if (existing) {
+        router.push("/feed");
+      } else {
+        await firebaseSignOut(auth);
+        setNotice({ text: "No account found. Please sign up first.", type: "error" });
+      }
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== "auth/popup-closed-by-user") {
+        setNotice({ text: "Sign in failed. Try again.", type: "error" });
+      }
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function handleSignUp() {
     setNotice(null);
-    setMode("signup");
-    await signInWithGoogle();
+    setBusy("signup");
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const existing = await getUserProfile(result.user.uid);
+      if (!existing) {
+        router.push("/onboarding");
+      } else {
+        setNotice({ text: "Account already exists. Signing you in…", type: "info" });
+        setTimeout(() => router.push("/feed"), 1500);
+      }
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== "auth/popup-closed-by-user") {
+        setNotice({ text: "Sign up failed. Try again.", type: "error" });
+      }
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -137,28 +145,28 @@ export default function LoginPage() {
               variant="outline"
               className="w-full border-white/15 hover:border-white/30 text-white hover:bg-white/8 gap-3"
               onClick={handleSignIn}
-              disabled={signingIn || authLoading}
+              disabled={!!busy || authLoading}
             >
-              {signingIn && mode === "signin" ? (
+              {busy === "signin" ? (
                 <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               ) : (
                 <GoogleIcon />
               )}
-              {signingIn && mode === "signin" ? "Signing in…" : "Sign in with Google"}
+              {busy === "signin" ? "Signing in…" : "Sign in with Google"}
             </Button>
 
             <Button
               size="lg"
               className="w-full gap-3 bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25"
               onClick={handleSignUp}
-              disabled={signingIn || authLoading}
+              disabled={!!busy || authLoading}
             >
-              {signingIn && mode === "signup" ? (
+              {busy === "signup" ? (
                 <div className="h-4 w-4 rounded-full border-2 border-neon-green/30 border-t-neon-green animate-spin" />
               ) : (
                 <GoogleIcon />
               )}
-              {signingIn && mode === "signup" ? "Creating account…" : "Sign up with Google"}
+              {busy === "signup" ? "Creating account…" : "Sign up with Google"}
             </Button>
           </div>
 
