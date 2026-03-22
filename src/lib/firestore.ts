@@ -12,6 +12,7 @@ import {
   where,
   orderBy,
   limit,
+  enableNetwork,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { UserProfile, NewUserProfile, InterestDocument, Match } from "@/types";
@@ -19,11 +20,10 @@ import type { UserProfile, NewUserProfile, InterestDocument, Match } from "@/typ
 // ─── User CRUD ────────────────────────────────────────────────────────────────
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  console.log("[getUserProfile] fetching uid:", uid);
   try {
+    await enableNetwork(db);
     const ref = doc(db, "users", uid);
     const snap = await getDoc(ref);
-    console.log("[getUserProfile] exists:", snap.exists(), "data:", snap.data());
     if (!snap.exists()) return null;
     return { uid, ...snap.data() } as UserProfile;
   } catch (err) {
