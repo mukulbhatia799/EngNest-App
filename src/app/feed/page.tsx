@@ -40,9 +40,11 @@ export default function FeedPage() {
     const unsubscribe = onSnapshot(
       q,
       async (snap) => {
+        console.log("[Feed] snapshot received, total docs:", snap.docs.length);
         const users = snap.docs
           .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
           .filter((u) => u.uid !== user.uid);
+        console.log("[Feed] after excluding self:", users.length);
         setEngineers(users);
 
         const interestChecks = await Promise.all(

@@ -19,10 +19,17 @@ import type { UserProfile, NewUserProfile, InterestDocument, Match } from "@/typ
 // ─── User CRUD ────────────────────────────────────────────────────────────────
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const ref = doc(db, "users", uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  return { uid, ...snap.data() } as UserProfile;
+  console.log("[getUserProfile] fetching uid:", uid);
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    console.log("[getUserProfile] exists:", snap.exists(), "data:", snap.data());
+    if (!snap.exists()) return null;
+    return { uid, ...snap.data() } as UserProfile;
+  } catch (err) {
+    console.error("[getUserProfile] error:", err);
+    return null;
+  }
 }
 
 export async function createUserProfile(
