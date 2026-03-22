@@ -3,13 +3,10 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import { Zap, Code2, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuthContext } from "@/providers/AuthProvider";
+import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { getUserProfile } from "@/lib/firestore";
-import { auth, googleProvider } from "@/lib/firebase";
 import Link from "next/link";
 
 const FEATURES = [
@@ -20,58 +17,18 @@ const FEATURES = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuthContext();
+  const { user, loading: authLoading, signingIn, error, signInWithGoogle } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
-  const [busy, setBusy] = useState<"signin" | "signup" | null>(null);
-  const [notice, setNotice] = useState<{ text: string; type: "error" | "info" } | null>(null);
 
-  // Auto-redirect already-logged-in users
   useEffect(() => {
-    if (authLoading || profileLoading || !user || busy) return;
-    router.push(profile ? "/feed" : "/onboarding");
-  }, [user, profile, authLoading, profileLoading, busy, router]);
-
-  async function handleSignIn() {
-    setNotice(null);
-    setBusy("signin");
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const existing = await getUserProfile(result.user.uid);
-      if (existing) {
+    if (!authLoading && !profileLoading && user) {
+      if (profile) {
         router.push("/feed");
       } else {
-        await firebaseSignOut(auth);
-        setNotice({ text: "No account found. Please sign up first.", type: "error" });
-      }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code !== "auth/popup-closed-by-user") {
-        setNotice({ text: "Sign in failed. Try again.", type: "error" });
-      }
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleSignUp() {
-    setNotice(null);
-    setBusy("signup");
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const existing = await getUserProfile(result.user.uid);
-      if (!existing) {
         router.push("/onboarding");
-      } else {
-        setNotice({ text: "Account already exists. Signing you in…", type: "info" });
-        setTimeout(() => router.push("/feed"), 1500);
       }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code !== "auth/popup-closed-by-user") {
-        setNotice({ text: "Sign up failed. Try again.", type: "error" });
-      }
-    } finally {
-      setBusy(null);
     }
-  }
+  }, [user, profile, authLoading, profileLoading, router]);
 
   return (
     <div className="relative min-h-screen bg-navy flex items-center justify-center px-4 overflow-hidden">
@@ -101,21 +58,18 @@ export default function LoginPage() {
         className="relative w-full max-w-md"
       >
         <div className="relative rounded-3xl border border-white/10 bg-white/4 backdrop-blur-xl p-8 overflow-hidden">
-          {/* Top shimmer */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon-green/60 to-transparent" />
 
-          {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neon-green/15 border border-neon-green/30 mb-4">
               <Zap className="h-8 w-8 text-neon-green" />
             </div>
             <h1 className="font-display font-bold text-2xl text-white">Welcome to EngNest</h1>
             <p className="text-slate-400 text-sm mt-1 text-center">
-              Find your engineer flatmate
+              Sign in to find your engineer flatmate
             </p>
           </div>
 
-          {/* Feature list */}
           <div className="space-y-3 mb-8 p-4 rounded-xl bg-white/3 border border-white/6">
             {FEATURES.map(({ icon: Icon, text, color }) => (
               <div key={text} className="flex items-center gap-3">
@@ -127,57 +81,34 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Notice / Error */}
-          {notice && (
-            <div className={`mb-4 rounded-xl p-3 text-sm ${
-              notice.type === "info"
-                ? "bg-neon-green/10 border border-neon-green/20 text-neon-green"
-                : "bg-red-500/10 border border-red-500/20 text-red-400"
-            }`}>
-              {notice.text}
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+              {error}
             </div>
           )}
 
-          {/* Buttons */}
-          <div className="space-y-3">
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full border-white/15 hover:border-white/30 text-white hover:bg-white/8 gap-3"
-              onClick={handleSignIn}
-              disabled={!!busy || authLoading}
-            >
-              {busy === "signin" ? (
-                <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              {busy === "signin" ? "Signing in…" : "Sign in with Google"}
-            </Button>
-
-            <Button
-              size="lg"
-              className="w-full gap-3 bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25"
-              onClick={handleSignUp}
-              disabled={!!busy || authLoading}
-            >
-              {busy === "signup" ? (
-                <div className="h-4 w-4 rounded-full border-2 border-neon-green/30 border-t-neon-green animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              {busy === "signup" ? "Creating account…" : "Sign up with Google"}
-            </Button>
-          </div>
+          <Button
+            size="lg"
+            variant="outline"
+            className="w-full border-white/15 hover:border-white/30 text-white hover:bg-white/8 gap-3"
+            onClick={signInWithGoogle}
+            disabled={signingIn || authLoading}
+          >
+            {signingIn ? (
+              <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            {signingIn ? "Signing in..." : "Continue with Google"}
+          </Button>
 
           <p className="mt-6 text-center text-xs text-slate-500">
-            By continuing, you agree to our{" "}
+            By signing in, you agree to our{" "}
             <span className="text-slate-400 underline cursor-pointer">Terms of Service</span> and{" "}
             <span className="text-slate-400 underline cursor-pointer">Privacy Policy</span>.
           </p>
         </div>
 
-        {/* Decorative cards */}
         <div className="absolute -z-10 -top-4 -left-4 w-full h-full rounded-3xl border border-white/4 bg-white/2" />
         <div className="absolute -z-20 -top-8 -left-8 w-full h-full rounded-3xl border border-white/2 bg-white/1" />
       </motion.div>
