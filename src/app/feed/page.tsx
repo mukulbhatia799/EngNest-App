@@ -40,11 +40,13 @@ export default function FeedPage() {
     const unsubscribe = onSnapshot(
       q,
       async (snap) => {
-        console.log("[Feed] snapshot received, total docs:", snap.docs.length);
+        console.log("[Feed] fromCache:", snap.metadata.fromCache, "docs:", snap.docs.length);
+        // Skip cache-only snapshots — wait for server data
+        if (snap.metadata.fromCache) return;
+
         const users = snap.docs
           .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
           .filter((u) => u.uid !== user.uid);
-        console.log("[Feed] after excluding self:", users.length);
         setEngineers(users);
 
         const interestChecks = await Promise.all(
@@ -59,7 +61,7 @@ export default function FeedPage() {
         setLoading(false);
       },
       (err) => {
-        console.error("Feed snapshot error:", err);
+        console.error("[Feed] snapshot error:", err);
         setLoading(false);
       }
     );

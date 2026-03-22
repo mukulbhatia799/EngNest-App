@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { initializeFirestore, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,13 +11,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const isNew = !getApps().length;
+const app = isNew ? initializeApp(firebaseConfig) : getApp();
 
-// experimentalForceLongPolling: Vercel's proxy buffers streaming HTTP responses,
-// breaking Firestore's default WebChannel. Long-polling works correctly behind proxies.
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
+// initializeFirestore must only be called once per app instance.
+// experimentalAutoDetectLongPolling auto-selects the best transport (WebChannel or long-polling)
+// based on environment — more robust than forcing one mode.
+export const db = isNew
+  ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
+  : getFirestore(app);
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
