@@ -36,7 +36,6 @@ export default function FeedPage() {
     getAllUsers(user.uid)
       .then(async (users) => {
         setEngineers(users);
-        // Check interests for all loaded users
         const interestChecks = await Promise.all(
           users.map(async (u) => ({
             uid: u.uid,
@@ -47,6 +46,7 @@ export default function FeedPage() {
         interestChecks.forEach(({ uid, sent }) => { map[uid] = sent; });
         setInterests(map);
       })
+      .catch((err) => console.error("getAllUsers failed:", err))
       .finally(() => setLoading(false));
   }, [user]);
 
