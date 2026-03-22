@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { initializeFirestore, getFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,17 +11,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const isNew = !getApps().length;
-const app = isNew ? initializeApp(firebaseConfig) : getApp();
-
-// initializeFirestore must only be called once per app instance.
-// experimentalAutoDetectLongPolling auto-selects the best transport (WebChannel or long-polling)
-// based on environment — more robust than forcing one mode.
-export const db = isNew
-  ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
-  : getFirestore(app);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 googleProvider.setCustomParameters({
