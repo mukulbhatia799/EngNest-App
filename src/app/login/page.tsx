@@ -128,13 +128,13 @@ export default function LoginPage() {
           </div>
 
           {/* Notice / Error */}
-          {(notice || error) && (
+          {notice && (
             <div className={`mb-4 rounded-xl p-3 text-sm ${
-              notice?.type === "info"
+              notice.type === "info"
                 ? "bg-neon-green/10 border border-neon-green/20 text-neon-green"
                 : "bg-red-500/10 border border-red-500/20 text-red-400"
             }`}>
-              {notice?.text ?? error}
+              {notice.text}
             </div>
           )}
 
