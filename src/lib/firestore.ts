@@ -6,6 +6,7 @@ import {
   collection,
   query,
   getDocs,
+  getDocsFromServer,
   arrayUnion,
   serverTimestamp,
   where,
@@ -48,8 +49,8 @@ export async function updateUserProfile(
 
 export async function getAllUsers(excludeUid: string): Promise<UserProfile[]> {
   const ref = collection(db, "users");
-  const q = query(ref, orderBy("createdAt", "desc"), limit(100));
-  const snap = await getDocs(q);
+  const q = query(ref, limit(100));
+  const snap = await getDocsFromServer(q);
   return snap.docs
     .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
     .filter((u) => u.uid !== excludeUid);
@@ -57,7 +58,7 @@ export async function getAllUsers(excludeUid: string): Promise<UserProfile[]> {
 
 export async function getUsersByCity(city: string, excludeUid: string): Promise<UserProfile[]> {
   const ref = collection(db, "users");
-  const q = query(ref, where("city", "==", city), orderBy("createdAt", "desc"), limit(50));
+  const q = query(ref, where("city", "==", city), limit(50));
   const snap = await getDocs(q);
   return snap.docs
     .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
