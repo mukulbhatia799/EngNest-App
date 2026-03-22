@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { useAuthContext } from "@/providers/AuthProvider";
 import { createUserProfile } from "@/lib/firestore";
+import { useProfile } from "@/hooks/useProfile";
 import { verifyLeetCodeOwnership, getVerificationCode } from "@/lib/leetcode";
 import {
   POPULAR_CITIES,
@@ -85,6 +86,7 @@ const STEP_META: Record<
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthContext();
+  const { profile, loading: profileLoading } = useProfile();
 
   const [step, setStep] = useState<OnboardingStep>("city");
   const [submitting, setSubmitting] = useState(false);
@@ -103,8 +105,10 @@ export default function OnboardingPage() {
   const [whatsapp, setWhatsapp] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !user) router.push("/login");
-  }, [user, authLoading, router]);
+    if (authLoading || profileLoading) return;
+    if (!user) { router.push("/login"); return; }
+    if (profile) { router.push("/feed"); }
+  }, [user, profile, authLoading, profileLoading, router]);
 
   const stepIndex = ONBOARDING_STEPS.indexOf(step);
 

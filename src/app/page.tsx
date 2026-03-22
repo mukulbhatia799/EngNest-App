@@ -149,9 +149,9 @@ export default function LandingPage() {
             >
               Sign in
             </Link>
-            <Button size="sm" asChild>
+            <Button size="sm" asChild className="bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25">
               <Link href="/login">
-                Get Started
+                Sign Up
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
