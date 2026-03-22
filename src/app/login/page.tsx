@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Zap, Code2, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,20 +15,55 @@ const FEATURES = [
   { icon: Users, text: "Mutual match → WhatsApp link", color: "text-neon-cyan" },
 ];
 
+type Mode = "signin" | "signup" | null;
+
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading, signingIn, error, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading, signingIn, error, signInWithGoogle, signOut } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const [mode, setMode] = useState<Mode>(null);
+  const [notice, setNotice] = useState<{ text: string; type: "error" | "info" } | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !profileLoading && user) {
+    if (authLoading || profileLoading || !user) return;
+
+    // Already-logged-in session with no button clicked → auto-route
+    if (mode === null) {
+      router.push(profile ? "/feed" : "/onboarding");
+      return;
+    }
+
+    if (mode === "signin") {
       if (profile) {
         router.push("/feed");
       } else {
+        setNotice({ text: "No account found. Please sign up first.", type: "error" });
+        signOut();
+        setMode(null);
+      }
+    } else {
+      // signup
+      if (!profile) {
         router.push("/onboarding");
+      } else {
+        setNotice({ text: "Account already exists. Redirecting to your feed…", type: "info" });
+        setTimeout(() => router.push("/feed"), 1500);
+        setMode(null);
       }
     }
-  }, [user, profile, authLoading, profileLoading, router]);
+  }, [user, profile, authLoading, profileLoading, mode, router, signOut]);
+
+  async function handleSignIn() {
+    setNotice(null);
+    setMode("signin");
+    await signInWithGoogle();
+  }
+
+  async function handleSignUp() {
+    setNotice(null);
+    setMode("signup");
+    await signInWithGoogle();
+  }
 
   return (
     <div className="relative min-h-screen bg-navy flex items-center justify-center px-4 overflow-hidden">
@@ -68,7 +103,7 @@ export default function LoginPage() {
             </div>
             <h1 className="font-display font-bold text-2xl text-white">Welcome to EngNest</h1>
             <p className="text-slate-400 text-sm mt-1 text-center">
-              Sign in to find your engineer flatmate
+              Find your engineer flatmate
             </p>
           </div>
 
@@ -84,31 +119,51 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
-              {error}
+          {/* Notice / Error */}
+          {(notice || error) && (
+            <div className={`mb-4 rounded-xl p-3 text-sm ${
+              notice?.type === "info"
+                ? "bg-neon-green/10 border border-neon-green/20 text-neon-green"
+                : "bg-red-500/10 border border-red-500/20 text-red-400"
+            }`}>
+              {notice?.text ?? error}
             </div>
           )}
 
-          {/* Google Sign In */}
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full border-white/15 hover:border-white/30 text-white hover:bg-white/8 gap-3"
-            onClick={signInWithGoogle}
-            disabled={signingIn || authLoading}
-          >
-            {signingIn ? (
-              <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            {signingIn ? "Signing in..." : "Continue with Google"}
-          </Button>
+          {/* Buttons */}
+          <div className="space-y-3">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-white/15 hover:border-white/30 text-white hover:bg-white/8 gap-3"
+              onClick={handleSignIn}
+              disabled={signingIn || authLoading}
+            >
+              {signingIn && mode === "signin" ? (
+                <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              {signingIn && mode === "signin" ? "Signing in…" : "Sign in with Google"}
+            </Button>
+
+            <Button
+              size="lg"
+              className="w-full gap-3 bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25"
+              onClick={handleSignUp}
+              disabled={signingIn || authLoading}
+            >
+              {signingIn && mode === "signup" ? (
+                <div className="h-4 w-4 rounded-full border-2 border-neon-green/30 border-t-neon-green animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              {signingIn && mode === "signup" ? "Creating account…" : "Sign up with Google"}
+            </Button>
+          </div>
 
           <p className="mt-6 text-center text-xs text-slate-500">
-            By signing in, you agree to our{" "}
+            By continuing, you agree to our{" "}
             <span className="text-slate-400 underline cursor-pointer">Terms of Service</span> and{" "}
             <span className="text-slate-400 underline cursor-pointer">Privacy Policy</span>.
           </p>
