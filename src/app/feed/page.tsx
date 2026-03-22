@@ -9,8 +9,10 @@ import EngineerCard from "@/components/EngineerCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { onSnapshot, collection, query, limit } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useAuthContext } from "@/providers/AuthProvider";
-import { getAllUsers, sendInterest, hasUserSentInterest } from "@/lib/firestore";
+import { sendInterest, hasUserSentInterest } from "@/lib/firestore";
 import { DEFAULT_FILTERS } from "@/types";
 import type { UserProfile, FeedFilters } from "@/types";
 
@@ -33,9 +35,16 @@ export default function FeedPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    getAllUsers(user.uid)
-      .then(async (users) => {
+
+    const q = query(collection(db, "users"), limit(100));
+    const unsubscribe = onSnapshot(
+      q,
+      async (snap) => {
+        const users = snap.docs
+          .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
+          .filter((u) => u.uid !== user.uid);
         setEngineers(users);
+
         const interestChecks = await Promise.all(
           users.map(async (u) => ({
             uid: u.uid,
@@ -45,9 +54,15 @@ export default function FeedPage() {
         const map: Record<string, boolean> = {};
         interestChecks.forEach(({ uid, sent }) => { map[uid] = sent; });
         setInterests(map);
-      })
-      .catch((err) => console.error("getAllUsers failed:", err))
-      .finally(() => setLoading(false));
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Feed snapshot error:", err);
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
   }, [user]);
 
   async function handleInterest(targetUid: string) {
