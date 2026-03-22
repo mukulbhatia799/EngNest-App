@@ -6,13 +6,10 @@ import {
   collection,
   query,
   getDocs,
-  getDocsFromServer,
   arrayUnion,
   serverTimestamp,
   where,
-  orderBy,
   limit,
-  enableNetwork,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { UserProfile, NewUserProfile, InterestDocument, Match } from "@/types";
@@ -20,16 +17,10 @@ import type { UserProfile, NewUserProfile, InterestDocument, Match } from "@/typ
 // ─── User CRUD ────────────────────────────────────────────────────────────────
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  try {
-    await enableNetwork(db);
-    const ref = doc(db, "users", uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    return { uid, ...snap.data() } as UserProfile;
-  } catch (err) {
-    console.error("[getUserProfile] error:", err);
-    return null;
-  }
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { uid, ...snap.data() } as UserProfile;
 }
 
 export async function createUserProfile(
@@ -57,7 +48,7 @@ export async function updateUserProfile(
 export async function getAllUsers(excludeUid: string): Promise<UserProfile[]> {
   const ref = collection(db, "users");
   const q = query(ref, limit(100));
-  const snap = await getDocsFromServer(q);
+  const snap = await getDocs(q);
   return snap.docs
     .map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
     .filter((u) => u.uid !== excludeUid);
