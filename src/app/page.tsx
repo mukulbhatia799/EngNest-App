@@ -3,6 +3,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
+import { useAuthContext } from "@/providers/AuthProvider";
 import {
   Zap,
   MapPin,
@@ -108,6 +109,7 @@ const STEPS = [
 
 // ─── Landing page ────────────────────────────────────────────────────
 export default function LandingPage() {
+  const { user } = useAuthContext();
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
@@ -143,18 +145,40 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Sign in
-            </Link>
-            <Button size="sm" asChild className="bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25">
-              <Link href="/login">
-                Sign Up
-                <ArrowRight className="h-3.5 w-3.5" />
+            {user ? (
+              <Link href="/feed" className="flex items-center gap-2 group">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName ?? "Profile"}
+                    referrerPolicy="no-referrer"
+                    className="h-8 w-8 rounded-full border-2 border-neon-green/40 group-hover:border-neon-green transition-colors"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full border-2 border-neon-green/40 bg-neon-green/15 flex items-center justify-center text-neon-green text-xs font-bold">
+                    {(user.displayName ?? "U")[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="hidden sm:block text-sm text-slate-400 group-hover:text-white transition-colors">
+                  Go to feed
+                </span>
               </Link>
-            </Button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Button size="sm" asChild className="bg-neon-green/15 border border-neon-green/30 text-neon-green hover:bg-neon-green/25">
+                  <Link href="/login">
+                    Sign Up
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -210,7 +234,7 @@ export default function LandingPage() {
           className="mt-10 flex flex-col sm:flex-row items-center gap-4"
         >
           <Button size="xl" asChild className="glow-green w-full sm:w-auto">
-            <Link href="/login">
+            <Link href={user ? "/feed" : "/login"}>
               <Zap className="h-5 w-5" />
               Find my flatmate
             </Link>
