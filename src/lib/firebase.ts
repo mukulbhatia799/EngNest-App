@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,11 +13,13 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-console.log("[Firebase] projectId:", firebaseConfig.projectId);
-console.log("[Firebase] appId:", firebaseConfig.appId);
+// experimentalForceLongPolling: Vercel's proxy buffers streaming HTTP responses,
+// breaking Firestore's default WebChannel. Long-polling works correctly behind proxies.
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 googleProvider.setCustomParameters({
