@@ -24,9 +24,22 @@ function getErrorMessage(err: unknown): string {
     if (err.message.includes("Permission denied")) {
       return "Permission denied. Your security rules may be blocking this operation.";
     }
+    if (err.message.includes("timeout")) {
+      return "Request timed out. Please check your internet connection and try again.";
+    }
     return err.message;
   }
   return "An unexpected error occurred";
+}
+
+// Wrap async operations with a timeout
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Operation timeout: Request took too long to complete. Check your internet connection.")), timeoutMs)
+    ),
+  ]);
 }
 
 // ─── User CRUD ────────────────────────────────────────────────────────────────
@@ -34,7 +47,7 @@ function getErrorMessage(err: unknown): string {
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const ref = doc(db, "users", uid);
-    const snap = await getDoc(ref);
+    const snap = await withTimeout(getDoc(ref), 8000);
     if (!snap.exists()) return null;
     return { uid, ...snap.data() } as UserProfile;
   } catch (err) {
@@ -49,11 +62,11 @@ export async function createUserProfile(
 ): Promise<void> {
   try {
     const ref = doc(db, "users", uid);
-    await setDoc(ref, {
+    await withTimeout(setDoc(ref, {
       ...profile,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    }), 15000);
   } catch (err) {
     console.error("[Firestore] createUserProfile failed:", err);
     throw new Error(getErrorMessage(err));
@@ -66,7 +79,7 @@ export async function updateUserProfile(
 ): Promise<void> {
   try {
     const ref = doc(db, "users", uid);
-    await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
+    await withTimeout(updateDoc(ref, { ...updates, updatedAt: serverTimestamp() }), 12000);
   } catch (err) {
     console.error("[Firestore] updateUserProfile failed:", err);
     throw new Error(getErrorMessage(err));

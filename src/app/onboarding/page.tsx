@@ -86,7 +86,7 @@ const STEP_META: Record<
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthContext();
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile, loading: profileLoading, error: profileError } = useProfile();
 
   const [step, setStep] = useState<OnboardingStep>("city");
   const [submitting, setSubmitting] = useState(false);
@@ -153,6 +153,13 @@ export default function OnboardingPage() {
 
   async function handleSubmit() {
     if (!user) return;
+
+    // Check if online before attempting submission
+    if (!navigator.onLine) {
+      setSubmitError("You appear to be offline. Please check your internet connection and try again.");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError("");
 
@@ -208,6 +215,17 @@ export default function OnboardingPage() {
     <div className="relative min-h-screen bg-navy flex flex-col items-center justify-center px-4 py-8 overflow-hidden">
       <div className="fixed inset-0 grid-pattern opacity-100 pointer-events-none" />
       <div className="fixed top-1/4 right-1/4 w-80 h-80 rounded-full bg-neon-cyan/5 blur-3xl pointer-events-none" />
+
+      {/* Offline Banner */}
+      {!navigator.onLine && (
+        <div className="fixed top-16 left-4 right-4 z-50 rounded-lg bg-red-500/10 border border-red-500/30 p-4 flex items-start gap-3 animate-pulse">
+          <span className="text-xl mt-0.5">📡</span>
+          <div>
+            <p className="font-medium text-red-400">You're offline</p>
+            <p className="text-xs text-red-400/70">Check your internet connection to continue</p>
+          </div>
+        </div>
+      )}
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/6 bg-navy/70 backdrop-blur-xl px-4 h-16 flex items-center">
@@ -300,17 +318,21 @@ export default function OnboardingPage() {
 
           {/* Navigation */}
           <div className="flex items-center justify-between px-8 pb-8 pt-0 gap-4">
-            {submitError && (
+            {(submitError || profileError) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute -top-20 left-8 right-8 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-400"
+                className="absolute -top-24 left-8 right-8 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-400"
               >
                 <div className="flex items-start gap-2">
                   <span className="text-lg mt-0.5">⚠</span>
                   <div className="flex-1 space-y-1">
-                    <p className="font-medium">{submitError}</p>
-                    <p className="text-xs opacity-75">Check your internet connection and try again. If the problem persists, contact support.</p>
+                    <p className="font-medium">{submitError || profileError}</p>
+                    <p className="text-xs opacity-75">
+                      {submitError?.includes("offline") || profileError?.includes("offline")
+                        ? "Check your internet connection and try again."
+                        : "If the problem persists after refreshing, contact support."}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -330,7 +352,7 @@ export default function OnboardingPage() {
               <Button
                 size="lg"
                 onClick={handleSubmit}
-                disabled={!canProceed() || submitting}
+                disabled={!canProceed() || submitting || !navigator.onLine}
                 className="gap-2 flex-1 sm:flex-none"
               >
                 {submitting ? (
