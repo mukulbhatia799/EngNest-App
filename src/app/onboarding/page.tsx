@@ -91,6 +91,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<OnboardingStep>("city");
   const [submitting, setSubmitting] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [submitError, setSubmitError] = useState<string>("");
 
   // Form state
   const [city, setCity] = useState("");
@@ -153,7 +154,11 @@ export default function OnboardingPage() {
   async function handleSubmit() {
     if (!user) return;
     setSubmitting(true);
+    setSubmitError("");
+
     try {
+      console.log("[Onboarding] Creating profile for user:", user.uid);
+
       await createUserProfile(user.uid, {
         name: user.displayName ?? "Engineer",
         email: user.email ?? "",
@@ -166,9 +171,13 @@ export default function OnboardingPage() {
         techStack,
         whatsapp,
       });
+
+      console.log("[Onboarding] Profile created successfully, redirecting...");
       router.push("/feed");
     } catch (err) {
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to create profile. Please try again.";
+      console.error("[Onboarding] Profile creation failed:", errorMessage, err);
+      setSubmitError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -291,10 +300,26 @@ export default function OnboardingPage() {
 
           {/* Navigation */}
           <div className="flex items-center justify-between px-8 pb-8 pt-0 gap-4">
+            {submitError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute -top-20 left-8 right-8 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-400"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-lg mt-0.5">⚠</span>
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium">{submitError}</p>
+                    <p className="text-xs opacity-75">Check your internet connection and try again. If the problem persists, contact support.</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             <Button
               variant="ghost"
               onClick={goBack}
-              disabled={stepIndex === 0}
+              disabled={stepIndex === 0 || submitting}
               className="gap-2"
             >
               <ChevronLeft className="h-4 w-4" />
